@@ -90,3 +90,46 @@ dput(x = loci89, file = "Objects/loci89.txt")
 dput(x = BuskinGroups4, file = "Objects/BuskinGroups4.txt")
 dput(x = BuskinGroupvec4, file = "Objects/BuskinGroupvec4.txt")
 dput(x = Kodiak57Pop89LociBaseline, file = "Objects/Kodiak57Pop89LociBaseline.txt")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### Leave One Out ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+output <- Anderson_etal.GCL(popvec = Kodiak57Pops, loci = loci89, groups = BuskinGroupvec4, group_names = BuskinGroups4)
+str(output)
+
+# Jim's new function does not provide Pop to Pop
+# Figure this out with "tidy" tools
+genefreq.mod <- output$genefreq
+genefreq.mod$ind <- rownames(genefreq.mod)
+
+require(tidyverse)
+
+# Convert to tall format
+genofreq.mod <- genefreq.mod %>%
+  gather(to_pop, likelihood, -from_pop, -from_group, -ind)
+str(genofreq.mod)
+
+# Normalize likelihoods within individuals, then average within from and to pops, then make wide
+genofreq.df <- genofreq.mod %>% 
+  select(-from_group) %>% 
+  group_by(ind) %>% 
+  mutate(n_likelihood = likelihood / sum(likelihood)) %>% 
+  group_by(from_pop, to_pop) %>% 
+  summarise(u_likelihood = mean(n_likelihood)) %>% 
+  spread(from_pop, u_likelihood)
+str(genofreq.df)
+
+# Convert wide df to matrix for lattice
+genofreq.mat <- data.matrix(genofreq.df[, -1])
+rownames(genofreq.mat) <- genofreq.df$to_pop
+str(genofreq.mat)
+
+require(lattice)
+new.colors <- colorRampPalette(c("white", "black"))
+levelplot(t(genofreq.mat[Kodiak57Pops, Kodiak57Pops]), col.regions = new.colors, xlab = "From_Pop", 
+          ylab = "To_Pop", main = "Mean Likelihood", at = seq(0, 1, length.out = 100), aspect = "fill", 
+          scales = list(x = list(rot = 45)),
+          panel = function(...) {
+            panel.levelplot(...)
+          })
