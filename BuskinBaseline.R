@@ -95,8 +95,17 @@ dput(x = Kodiak57Pop89LociBaseline, file = "Objects/Kodiak57Pop89LociBaseline.tx
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### Leave One Out ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-output <- Anderson_etal.GCL(popvec = Kodiak57Pops, loci = loci89, groups = BuskinGroupvec4, group_names = BuskinGroups4)
+output <- Anderson_etal.GCL(popvec = Kodiak57Pops, loci = loci89[1:87], groups = BuskinGroupvec4, group_names = BuskinGroups4)
 str(output)
+
+require(lattice)
+new.colors <- colorRampPalette(c("white", "black"))
+levelplot(output$pop_to_group_mean_rel_like, col.regions = new.colors, xlab = "From_Pop", 
+          ylab = "To_Group", main = "Mean Likelihood", at = seq(0, 1, length.out = 100), aspect = "fill", 
+          scales = list(x = list(rot = 45)),
+          panel = function(...) {
+            panel.levelplot(...)
+          })
 
 # Jim's new function does not provide Pop to Pop
 # Figure this out with "tidy" tools
