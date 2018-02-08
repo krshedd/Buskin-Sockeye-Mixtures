@@ -194,3 +194,96 @@ sapply(Buskin2014_2017, function(Mix) {
 
 ## Create output directory
 sapply(Buskin2014_2017, function(Mix) {dir.create(paste0("BAYES/Output/", Mix))})
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### Clean workspace; dget .gcl objects and Locus Control ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+rm(list = ls(all = TRUE))
+setwd("V:/Analysis/4_Westward/Sockeye/Buskin Subsistence Harvest 2010-2017/Mixtures")
+# This sources all of the new GCL functions to this workspace
+source("C:/Users/krshedd/Documents/R/Functions.GCL.R")
+
+## Get objects
+LocusControl <- dget(file = "Objects/LocusControl98.txt")
+
+KMAobjects <- list.files(path = "Objects", recursive = FALSE)
+KMAobjects
+
+invisible(sapply(KMAobjects, function(objct) {assign(x = unlist(strsplit(x = objct, split = ".txt")), value = dget(file = paste(getwd(), "Objects", objct, sep = "/")), pos = 1) })); beep(2)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### Summarize BAYES Output ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Buskin2014_2017_Estimates <- CustomCombineBAYESOutput.GCL(
+  groupvec = seq(BuskinGroups4), groupnames = BuskinGroups4 ,
+  maindir = "BAYES/Output", 
+  mixvec = Buskin2014_2017, prior = "",  
+  ext = "RGN", nchains = 5, burn = 0.5, alpha = 0.1, PosteriorOutput = FALSE)
+
+# dput
+dir.create("Estimates objects")
+dput(x = Buskin2014_2017_Estimates, file = "Estimates objects/Buskin2014_2017_Estimates.txt")
+Buskin2014_2017_Estimates <- dget(file = "Estimates objects/Buskin2014_2017_Estimates.txt")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### Tables ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Baseline
+require(xlsx)
+require(tidyverse)
+kma_baseline <- read.xlsx(file = "V:/Documents/4_Westward/Sockeye/KMA 2014-2016/KMA 2015 Baseline FMS/FMS 16-XX KMA Sockeye 2015 Baseline Tables.xlsx", sheetName = "Table 3. - Collections", startRow = 3, header = TRUE, stringsAsFactors = FALSE)
+str(kma_baseline)
+
+pop2colection <- sapply(Kodiak57Pops, function(pop) length(unlist(strsplit(x = pop, split = "\\."))))
+
+buskin_baseline <- kma_baseline %>% 
+  filter(ADF.G.code %in% Kodiak76Collections) %>% 
+  mutate(Date = format(as.Date(as.numeric(Date), origin = "1899-12-30"), format = "%m/%d/%Y")) %>% 
+  rename(Reporting_Group = NA.) %>% 
+  mutate(Reporting_Group = BuskinGroups4[rep(BuskinGroupvec4, pop2colection)]) %>% 
+  mutate(Collection = Collection - min(Collection) + 1) %>% 
+  mutate(Population = Population - min(Population) + 1)
+  
+str(buskin_baseline)
+
+# Any weird dates?
+sort(as.Date(buskin_baseline$Date, format = "%m/%d/%Y"))  # 1905-06-15???, this was for SLUP93 which only has year (1993)
+
+# Replace wayward date for SLUP93
+buskin_baseline$Date[buskin_baseline$Date == format(min(as.Date(buskin_baseline$Date, format = "%m/%d/%Y")), "%m/%d/%Y")] <- "1993"
+
+# Write file
+write.xlsx(x = buskin_baseline, file = "Tables/Buskin 2014-2017.xlsx", sheetName = "Baseline Collections", col.names = TRUE, row.names = FALSE, showNA = FALSE)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## QC
+# Read in relevant QC data
+silly.summary <- read.xlsx(file = "V:/Lab/Genotyping/SNP Projects/Sockeye/Project S177 Buskin Subsistence 2014_2017/QC/Project S177 QC Summary.xlsx", sheetName = "Summary by Silly", stringsAsFactors = FALSE)
+str(silly.summary)
+
+conflict.summary <- read.xlsx(file = "V:/Lab/Genotyping/SNP Projects/Sockeye/Project S177 Buskin Subsistence 2014_2017/QC/Project S177 QC Summary.xlsx", sheetName = "Conflicts by Silly", stringsAsFactors = FALSE)
+str(conflict.summary)
+
+# Join
+QC.df <- left_join(x = silly.summary, y = conflict.summary, by = "NA.") %>% 
+  rename(Silly = NA.) %>% 
+  mutate(Year = 2014:2017) %>% 
+  mutate(HomoHet = Total.Het.Homo + Total.Homo.Het) %>% 
+  mutate(HomoHetRate = HomoHet / Total.QC.Genotypes) %>% 
+  mutate(ErrorRate = Discrepancy.Rate / 2)
+
+QC_table <- QC.df[, c("Year", "Genotyped", "Total.QC.Fish", "Failure.Rate", "Total.QC.Genotypes", "HomoHet", "HomoHetRate", "Total.Homo.Homo", "Homo.Homo.Rate", "Discrepancy.Rate", "ErrorRate")]
+colnames(QC_table) <- c("Year", "Original.n", "QC.n", "Failure.r", "QC.Genotypes", "Homo-Het.n", "Homo-Het.r", "Homo-Homo.n", "Homo-Homo.n", "Discrepancy.r", "Error.r")
+
+DataQC_table <- QC.df[, c("Year", "Genotyped", "Alternate", "Missing", "Duplicate", "Final")]
+
+
+# Write file
+write.xlsx(x = QC_table, file = "Tables/Buskin 2014-2017.xlsx", sheetName = "QC", col.names = TRUE, row.names = FALSE, append = TRUE)
+write.xlsx(x = DataQC_table, file = "Tables/Buskin 2014-2017.xlsx", sheetName = "Sample Sizes", col.names = TRUE, row.names = FALSE, append = TRUE)
