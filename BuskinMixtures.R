@@ -283,7 +283,42 @@ colnames(QC_table) <- c("Year", "Original.n", "QC.n", "Failure.r", "QC.Genotypes
 
 DataQC_table <- QC.df[, c("Year", "Genotyped", "Alternate", "Missing", "Duplicate", "Final")]
 
-
 # Write file
 write.xlsx(x = QC_table, file = "Tables/Buskin 2014-2017.xlsx", sheetName = "QC", col.names = TRUE, row.names = FALSE, append = TRUE)
 write.xlsx(x = DataQC_table, file = "Tables/Buskin 2014-2017.xlsx", sheetName = "Sample Sizes", col.names = TRUE, row.names = FALSE, append = TRUE)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Stock composition + sample size
+Buskin2014_2017_Estimates <- dget(file = "Estimates objects/Buskin2014_2017_Estimates.txt")
+
+
+Estimates_table <- cbind("Year" = unlist(strsplit(x = paste(2014:2017, NA, NA, NA, collapse = " "), split = " ")),
+                         "Sample size" = unlist(strsplit(x = paste(Buskin2014_2017_SampleSizes[, "Final"], NA, NA, NA, collapse = " "), split = " ")), 
+                         do.call(rbind, Buskin2014_2017_Estimates)[, c("median", "5%", "95%", "P=0", "mean", "sd")]
+)
+
+
+# Write file
+write.xlsx(x = Estimates_table, file = "Tables/Buskin 2014-2017.xlsx", sheetName = "Estimates", col.names = TRUE, row.names = FALSE, append = TRUE, showNA = FALSE)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### Figure ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dir.create("Figures")
+estimates.df <- data.frame(do.call(rbind, Buskin2014_2017_Estimates))
+estimates.df$RG <- factor(rep(BuskinGroups4, 4), levels = BuskinGroups4)
+estimates.df$year <- factor(rep(2014:2017, each = 4))
+str(estimates.df)
+
+require(tidyverse)
+ggplot(estimates.df, aes(x = RG, y = mean * 100, fill = year)) +
+  geom_bar(stat = "identity", position = position_dodge(), color = "black", width = 0.8) +
+  scale_fill_grey(name = "Year", start = 0.3, end = 1) +
+  geom_errorbar(aes(ymin = X5.*100, ymax = X95.*100), position = position_dodge(0.8), width = 0.5) +
+  xlab("Reporting Group") +
+  ylab("Percent of Catch (%)") +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
+  theme(legend.position = c(1, 1), legend.justification = c(1, 1), legend.text = element_text(size = 14), legend.title = element_text(size = 16),
+        axis.ticks.x = element_blank(), axis.text = element_text(size = 14), axis.title = element_text(size = 16), text = element_text(family = "serif"))
+ggsave(filename = "Figures/Estimates_Barplot.png", width = 6.5, height = 6.5)
