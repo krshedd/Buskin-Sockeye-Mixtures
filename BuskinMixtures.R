@@ -316,9 +316,10 @@ ggplot(estimates.df, aes(x = RG, y = mean * 100, fill = year)) +
   scale_fill_grey(name = "Year", start = 0.3, end = 1) +
   geom_errorbar(aes(ymin = X5.*100, ymax = X95.*100), position = position_dodge(0.8), width = 0.5) +
   xlab("Reporting Group") +
-  ylab("Percent of Catch (%)") +
+  ylab("Percent of Harvest (%)") +
+  ggtitle("Stock Composition Estimates\n") +
   theme_classic() +
   scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
-  theme(legend.position = c(1, 1), legend.justification = c(1, 1), legend.text = element_text(size = 14), legend.title = element_text(size = 16),
-        axis.ticks.x = element_blank(), axis.text = element_text(size = 14), axis.title = element_text(size = 16), text = element_text(family = "serif"))
+  theme(plot.title = element_text(size = 14, hjust = 0.5), legend.position = c(1, 1), legend.justification = c(1, 1), legend.text = element_text(size = 12), legend.title = element_text(size = 14),
+        axis.ticks.x = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = 14), text = element_text(family = "serif"))
 ggsave(filename = "Figures/Estimates_Barplot.png", width = 6.5, height = 6.5)
